@@ -54,7 +54,7 @@ const MAX_FREE_EDITS = 2;   // patient can correct spelling / reason up to 2x, n
    self-registration is ever accepted (see AdmitInline below) — never trust
    a "payment succeeded" claim from the frontend alone.
 ================================================================= */
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://sanjeevani-grid.onrender.com/api";
 // Public value — safe to keep in frontend code (unlike the Client Secret).
 const GOOGLE_CLIENT_ID = "728074068769-2nah5gcbtnt28mvnaq18nn7vlk50hrj2.apps.googleusercontent.com";
 const TOKEN_KEY = "sg_token";
