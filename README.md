@@ -13,28 +13,6 @@ AI-tracked bed & doctor availability across Bihar's public hospitals (PMCH, medi
 - **Auth** — admin login (ID containing `.admin`) vs. patient/public login (name + mobile), plus Google Sign-In and email/password on the backend.
 - **Payments** — Razorpay integration for the ₹5 OPD registration fee (backend re-verifies the payment signature server-side).
 
-## Project structure
-
-This is a two-part project:
-
-```
-Sanjeevani-Grid/
-├─ sanjeevanigrid/           # Frontend — React 18 + Vite
-│  ├─ src/
-│  │  ├─ main.jsx            # React entry point
-│  │  ├─ App.jsx             # Auth, admin & user dashboards
-│  │  └─ index.css           # Tailwind entry
-│  └─ package.json
-└─ sanjeevanigrid-backend/   # Backend — Node.js + Express + MongoDB
-   ├─ config/                # DB connection
-   ├─ middleware/            # Auth & error handling
-   ├─ models/                # Hospital, Patient, Teleconsult, User (Mongoose)
-   ├─ routes/                # auth, hospitals, patients, teleconsults, payments
-   ├─ seedGovtHospitals.js   # Seeds the 55+ Bihar institutions
-   ├─ server.js              # App entry point
-   └─ package.json
-```
-
 ## Tech stack
 
 **Frontend**
@@ -78,26 +56,3 @@ cp .env.example .env   # fill in the real values (see below)
 npm run dev            # nodemon, auto-restarts on changes
 # or: npm start
 ```
-
-Runs on `http://localhost:5000` by default.
-
-#### Environment variables (`sanjeevanigrid-backend/.env`)
-
-| Variable | Purpose |
-|---|---|
-| `PORT` | Server port (defaults to `5000`) |
-| `MONGO_URI` | MongoDB Atlas connection string |
-| `JWT_SECRET` | Secret used to sign auth tokens |
-| `GOOGLE_CLIENT_ID` | For Google Sign-In |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For the OPD registration payment flow |
-| `CLIENT_URL` | Deployed frontend origin, added to the CORS allow-list |
-
-See `sanjeevanigrid-backend/README.md` for step-by-step MongoDB Atlas, Google OAuth, and Razorpay setup instructions.
-
-## Deployment
-
-The frontend is deployed on Vercel: **https://sanjeevani-grid-iota.vercel.app/**
-
-## License
-
-Not yet specified.
