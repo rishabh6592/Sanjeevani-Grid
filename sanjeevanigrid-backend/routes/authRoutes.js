@@ -58,63 +58,6 @@ if (rawResendKey) {
 }
 
 /* =========================================================
-   GET /api/auth/test-resend
-
-   TEMPORARY DIAGNOSTIC ROUTE — REMOVE AFTER DEBUGGING.
-   Visit this URL directly in your browser to test the
-   Resend key without needing shell access. It sends a
-   test email to Resend's own test inbox (delivered@resend.dev)
-   so it won't spam anyone.
-========================================================= */
-
-router.get(
-  "/test-resend",
-  asyncHandler(async (req, res) => {
-    if (!resend || !rawResendKey) {
-      return res.json({
-        ok: false,
-        stage: "config",
-        message: "RESEND_API_KEY missing at runtime",
-      });
-    }
-
-    try {
-      const { data, error } = await resend.emails.send({
-        from: "onboarding@resend.dev",
-        to: ["delivered@resend.dev"],
-        subject: "Diagnostic test",
-        html: "<p>test</p>",
-      });
-
-      if (error) {
-        return res.json({
-          ok: false,
-          stage: "resend_error",
-          error,
-          keyPrefix: rawResendKey.slice(0, 5),
-          keyLength: rawResendKey.length,
-        });
-      }
-
-      return res.json({
-        ok: true,
-        data,
-        keyPrefix: rawResendKey.slice(0, 5),
-        keyLength: rawResendKey.length,
-      });
-    } catch (err) {
-      return res.json({
-        ok: false,
-        stage: "exception",
-        message: err.message,
-        keyPrefix: rawResendKey.slice(0, 5),
-        keyLength: rawResendKey.length,
-      });
-    }
-  })
-);
-
-/* =========================================================
    POST /api/auth/register
 ========================================================= */
 
