@@ -2,7 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const crypto = require("crypto");
-const { Resend } = require("resend");
+const nodemailer = require("nodemailer");
 const { OAuth2Client } = require("google-auth-library");
 
 const User = require("../models/User");
@@ -20,40 +20,40 @@ const googleClient = new OAuth2Client(
 );
 
 /* =========================================================
-   RESEND EMAIL CONFIGURATION
+   GMAIL SMTP CONFIGURATION (via Nodemailer)
 
-   IMPORTANT: .trim() removes any accidental leading/trailing
-   spaces or newline characters that sneak in when copy-pasting
-   the key into Render's environment variable panel. A key with
-   an invisible trailing "\n" LOOKS correct but is rejected by
-   Resend with a 401 "API key is invalid" error.
+   Uses a Gmail account + App Password instead of a
+   transactional email API. No domain verification is
+   required, and email can be sent to any recipient
+   immediately. Suitable for personal/college projects.
 ========================================================= */
 
-const rawResendKey = process.env.RESEND_API_KEY
-  ? process.env.RESEND_API_KEY.trim()
+const gmailUser = process.env.GMAIL_USER
+  ? process.env.GMAIL_USER.trim()
   : null;
 
-const resend = rawResendKey
-  ? new Resend(rawResendKey)
+const gmailAppPassword = process.env.GMAIL_APP_PASSWORD
+  ? process.env.GMAIL_APP_PASSWORD.replace(/\s/g, "")
   : null;
 
-/*
-  Safe startup diagnostic (does NOT print the full key).
-  Compare the printed prefix/length against the key shown
-  in your Resend dashboard to confirm Render is actually
-  loading the key you think it is.
-*/
+const mailTransporter =
+  gmailUser && gmailAppPassword
+    ? nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: gmailUser,
+          pass: gmailAppPassword,
+        },
+      })
+    : null;
 
-if (rawResendKey) {
+if (gmailUser && gmailAppPassword) {
   console.log(
-    `[Resend] Key loaded. Prefix: ${rawResendKey.slice(
-      0,
-      5
-    )}... | Length: ${rawResendKey.length}`
+    `[Gmail SMTP] Configured for sender: ${gmailUser}`
   );
 } else {
   console.warn(
-    "[Resend] RESEND_API_KEY is missing at startup."
+    "[Gmail SMTP] GMAIL_USER or GMAIL_APP_PASSWORD is missing at startup."
   );
 }
 
@@ -209,12 +209,12 @@ router.post(
     }
 
     /*
-      Check Resend configuration
+      Check Gmail SMTP configuration
     */
 
-    if (!resend || !rawResendKey) {
+    if (!mailTransporter) {
       console.error(
-        "RESEND_API_KEY is missing"
+        "GMAIL_USER or GMAIL_APP_PASSWORD is missing"
       );
 
       res.status(500);
@@ -270,27 +270,18 @@ router.post(
     const resetUrl =
       `${clientUrl}/reset-password?token=${resetToken}`;
 
-    /*
-      Resend sender
-    */
-
-    const fromEmail = (
-      process.env.RESEND_FROM_EMAIL ||
-      "onboarding@resend.dev"
-    ).trim();
-
     try {
       /*
-        Send email through Resend API.
-        No SMTP connection is used.
+        Send email through Gmail SMTP
+        using Nodemailer.
       */
 
-      const { data, error } =
-        await resend.emails.send({
+      const info =
+        await mailTransporter.sendMail({
           from:
-            `SanjeevaniGrid <${fromEmail}>`,
+            `SanjeevaniGrid <${gmailUser}>`,
 
-          to: [user.email],
+          to: user.email,
 
           subject:
             "SanjeevaniGrid - Reset Password",
@@ -367,34 +358,9 @@ If you did not request this password reset, you can safely ignore this email.`,
           `,
         });
 
-      /*
-        Resend returned an error
-      */
-
-      if (error) {
-        console.error(
-          "Resend email error:",
-          error
-        );
-
-        user.resetPasswordToken =
-          undefined;
-
-        user.resetPasswordExpire =
-          undefined;
-
-        await user.save();
-
-        res.status(500);
-
-        throw new Error(
-          "Could not send password reset email"
-        );
-      }
-
       console.log(
         "Password reset email sent successfully:",
-        data?.id
+        info?.messageId
       );
 
     } catch (error) {
