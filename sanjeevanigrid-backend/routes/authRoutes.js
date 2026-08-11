@@ -21,11 +21,41 @@ const googleClient = new OAuth2Client(
 
 /* =========================================================
    RESEND EMAIL CONFIGURATION
+
+   IMPORTANT: .trim() removes any accidental leading/trailing
+   spaces or newline characters that sneak in when copy-pasting
+   the key into Render's environment variable panel. A key with
+   an invisible trailing "\n" LOOKS correct but is rejected by
+   Resend with a 401 "API key is invalid" error.
 ========================================================= */
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
+const rawResendKey = process.env.RESEND_API_KEY
+  ? process.env.RESEND_API_KEY.trim()
   : null;
+
+const resend = rawResendKey
+  ? new Resend(rawResendKey)
+  : null;
+
+/*
+  Safe startup diagnostic (does NOT print the full key).
+  Compare the printed prefix/length against the key shown
+  in your Resend dashboard to confirm Render is actually
+  loading the key you think it is.
+*/
+
+if (rawResendKey) {
+  console.log(
+    `[Resend] Key loaded. Prefix: ${rawResendKey.slice(
+      0,
+      5
+    )}... | Length: ${rawResendKey.length}`
+  );
+} else {
+  console.warn(
+    "[Resend] RESEND_API_KEY is missing at startup."
+  );
+}
 
 /* =========================================================
    POST /api/auth/register
@@ -182,7 +212,7 @@ router.post(
       Check Resend configuration
     */
 
-    if (!resend || !process.env.RESEND_API_KEY) {
+    if (!resend || !rawResendKey) {
       console.error(
         "RESEND_API_KEY is missing"
       );
@@ -244,9 +274,10 @@ router.post(
       Resend sender
     */
 
-    const fromEmail =
+    const fromEmail = (
       process.env.RESEND_FROM_EMAIL ||
-      "onboarding@resend.dev";
+      "onboarding@resend.dev"
+    ).trim();
 
     try {
       /*
