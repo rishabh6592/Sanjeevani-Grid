@@ -12,6 +12,9 @@ import {
   XCircle, IndianRupee, CreditCard, HelpCircle, Mail,
 } from "lucide-react";
 
+/* ============================= APP CONFIG ============================= */
+const APP_VERSION = "v1.0.0"; // Easily change your version here!
+
 /* ============================= DESIGN TOKENS =============================
    Palette: clinical teal + navy, built for a public-health "ops room" feel —
    not the generic dark/neon or cream/terracotta AI defaults.
@@ -398,27 +401,6 @@ function LoginScreen({ onLogin }) {
       }
 
       // Mobile-number-based reset — OTP flow (two steps: send OTP, then verify + set password)
-      //for mobile paid otp
-      // if (!mobileOtpSent) {
-      //   if (resetContact.trim().length !== 10) {
-      //     return setError("Please enter a valid 10-digit mobile number.");
-      //   }
-      //   setBusy(true);
-      //   try {
-      //     await apiFetch("/auth/send-otp-mobile", {
-      //       method: "POST",
-      //       body: JSON.stringify({ contact: resetContact.trim() }),
-      //     });
-      //     setMobileOtpSent(true);
-      //   } catch (e) {
-      //     setError(e.message || "Failed to send OTP. Please try again.");
-      //   } finally {
-      //     setBusy(false);
-      //   }
-      //   return;
-      // }
-
-      // Mobile-number-based reset — OTP flow (two steps: send OTP, then verify + set password)
       if (!mobileOtpSent) {
         if (resetContact.trim().length !== 10) {
           return setError("Please enter a valid 10-digit mobile number.");
@@ -480,9 +462,6 @@ function LoginScreen({ onLogin }) {
     }
   }
 
-  // Resets every "forgot password" related field — used whenever we leave
-  // forgotPassword mode or switch role/tab, so stale success screens or
-  // half-typed values from one flow don't leak into the other.
   function resetForgotState() {
     setError("");
     setEmail("");
@@ -804,7 +783,7 @@ function Sidebar({ role, tab, setTab, onLogout, name, open, setOpen, alertCount 
         className={`fixed md:static z-40 top-0 left-0 h-full w-64 flex flex-col justify-between transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
         style={{ background: C.ink }}
       >
-        <div>
+        <div className="flex-1 overflow-y-auto">
           <div className="flex items-center justify-between gap-2.5 px-5 py-6">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.1)" }}>
@@ -815,8 +794,7 @@ function Sidebar({ role, tab, setTab, onLogout, name, open, setOpen, alertCount 
                 <div className="text-[10px] mt-1 truncate" style={{ color: "#7FA7A5" }}>Bihar Health Network</div>
               </div>
             </div>
-            {/* Mobile-only close button — the hamburger in the topbar only opens
-                the menu, there was no way to close it besides tapping the backdrop. */}
+            {/* Mobile-only close button */}
             <button
               onClick={() => setOpen(false)}
               aria-label="Close menu"
@@ -827,13 +805,11 @@ function Sidebar({ role, tab, setTab, onLogout, name, open, setOpen, alertCount 
             </button>
           </div>
 
-          {/* Mobile-only live date & time, moved here (out of the way of page
-              content) — visible whenever the menu is open. */}
           <div className="md:hidden px-3 mb-2">
             <SidebarClock />
           </div>
 
-          <nav className="px-3 mt-2 space-y-1">
+          <nav className="px-3 mt-2 space-y-1 pb-4">
             {nav.map(([key, label, Icon]) => (
               <button
                 key={key}
@@ -851,7 +827,9 @@ function Sidebar({ role, tab, setTab, onLogout, name, open, setOpen, alertCount 
             ))}
           </nav>
         </div>
-        <div className="p-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        
+        {/* FOOTER SECTION: User info, Logout, and Version Tag */}
+        <div className="p-4 border-t mt-auto" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <div className="flex items-center gap-2.5 px-2 mb-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: C.teal }}>
               {name?.[0]?.toUpperCase() || "U"}
@@ -861,9 +839,24 @@ function Sidebar({ role, tab, setTab, onLogout, name, open, setOpen, alertCount 
               <div className="text-[10px] capitalize" style={{ color: "#7FA7A5" }}>{role}</div>
             </div>
           </div>
-          <button onClick={onLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold" style={{ color: "#F4A6A6", background: "rgba(220,38,38,0.12)" }}>
+          <button onClick={onLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 active:scale-[0.98]" style={{ color: "#F4A6A6", background: "rgba(220,38,38,0.12)" }}>
             <LogOut size={14} /> Logout
           </button>
+
+          {/* === Premium Version Indicator === */}
+          <div className="mt-4 pt-3 border-t flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: C.available }}></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: C.available }}></span>
+              </span>
+              <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: "#7FA7A5" }}>System Live</span>
+            </div>
+            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md tracking-wide" style={{ background: "rgba(255,255,255,0.05)", color: "#B9D6D4" }}>
+              {APP_VERSION}
+            </span>
+          </div>
+          {/* ================================= */}
         </div>
       </div>
     </>
