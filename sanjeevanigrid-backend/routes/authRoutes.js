@@ -2,7 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 const { OAuth2Client } = require("google-auth-library");
 
 const User = require("../models/User");
@@ -20,43 +20,37 @@ const googleClient = new OAuth2Client(
 );
 
 /* =========================================================
-   GMAIL SMTP CONFIGURATION (via Nodemailer)
+   SENDGRID CONFIGURATION
 
-   Uses a Gmail account + App Password instead of a
-   transactional email API. No domain verification is
-   required, and email can be sent to any recipient
-   immediately. Suitable for personal/college projects.
+   Uses SendGrid's HTTPS API (port 443) instead of raw SMTP
+   sockets. This avoids ENETUNREACH / blocked-port issues
+   that many hosting providers (Render, Railway, Heroku free
+   tiers, etc.) impose on outbound SMTP ports (25/465/587).
+
+   Required env vars:
+     SENDGRID_API_KEY   - from SendGrid dashboard
+     SENDGRID_FROM_EMAIL - a verified sender or domain
 ========================================================= */
 
-const gmailUser = process.env.GMAIL_USER
-  ? process.env.GMAIL_USER.trim()
+const sendgridApiKey = process.env.SENDGRID_API_KEY
+  ? process.env.SENDGRID_API_KEY.trim()
   : null;
 
-const gmailAppPassword = process.env.GMAIL_APP_PASSWORD
-  ? process.env.GMAIL_APP_PASSWORD.replace(/\s/g, "")
+const sendgridFromEmail = process.env.SENDGRID_FROM_EMAIL
+  ? process.env.SENDGRID_FROM_EMAIL.trim()
   : null;
 
-const mailTransporter =
-  gmailUser && gmailAppPassword
-    ? nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        family: 4,
-        auth: {
-          user: gmailUser,
-          pass: gmailAppPassword,
-        },
-      })
-    : null;
+if (sendgridApiKey) {
+  sgMail.setApiKey(sendgridApiKey);
+}
 
-if (gmailUser && gmailAppPassword) {
+if (sendgridApiKey && sendgridFromEmail) {
   console.log(
-    `[Gmail SMTP] Configured for sender: ${gmailUser}`
+    `[SendGrid] Configured for sender: ${sendgridFromEmail}`
   );
 } else {
   console.warn(
-    "[Gmail SMTP] GMAIL_USER or GMAIL_APP_PASSWORD is missing at startup."
+    "[SendGrid] SENDGRID_API_KEY or SENDGRID_FROM_EMAIL is missing at startup."
   );
 }
 
@@ -212,12 +206,12 @@ router.post(
     }
 
     /*
-      Check Gmail SMTP configuration
+      Check SendGrid configuration
     */
 
-    if (!mailTransporter) {
+    if (!sendgridApiKey || !sendgridFromEmail) {
       console.error(
-        "GMAIL_USER or GMAIL_APP_PASSWORD is missing"
+        "SENDGRID_API_KEY or SENDGRID_FROM_EMAIL is missing"
       );
 
       res.status(500);
@@ -275,22 +269,22 @@ router.post(
 
     try {
       /*
-        Send email through Gmail SMTP
-        using Nodemailer.
+        Send email through SendGrid HTTPS API
       */
 
-      const info =
-        await mailTransporter.sendMail({
-          from:
-            `SanjeevaniGrid <${gmailUser}>`,
+      const [response] = await sgMail.send({
+        to: user.email,
 
-          to: user.email,
+        from: {
+          email: sendgridFromEmail,
+          name: "SanjeevaniGrid",
+        },
 
-          subject:
-            "SanjeevaniGrid - Reset Password",
+        subject:
+          "SanjeevaniGrid - Reset Password",
 
-          text:
-            `You requested a password reset.
+        text:
+          `You requested a password reset.
 
 Click the link below to reset your password:
 
@@ -300,70 +294,70 @@ This link will expire in 15 minutes.
 
 If you did not request this password reset, you can safely ignore this email.`,
 
-          html: `
-            <div style="
-              font-family: Arial, sans-serif;
-              max-width: 600px;
-              margin: auto;
-              padding: 30px;
-              color: #0F2438;
-              background: #ffffff;
+        html: `
+          <div style="
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 30px;
+            color: #0F2438;
+            background: #ffffff;
+          ">
+
+            <h2 style="
+              color: #0E7C7B;
+              margin-bottom: 10px;
             ">
+              SanjeevaniGrid
+            </h2>
 
-              <h2 style="
-                color: #0E7C7B;
-                margin-bottom: 10px;
-              ">
-                SanjeevaniGrid
-              </h2>
+            <h3>
+              Password Reset Request
+            </h3>
 
-              <h3>
-                Password Reset Request
-              </h3>
+            <p>
+              You requested to reset your password.
+            </p>
 
-              <p>
-                You requested to reset your password.
-              </p>
+            <p>
+              Click the button below to create
+              a new password.
+            </p>
 
-              <p>
-                Click the button below to create
-                a new password.
-              </p>
-
-              <div style="margin: 25px 0;">
-                <a
-                  href="${resetUrl}"
-                  style="
-                    display: inline-block;
-                    padding: 12px 20px;
-                    background: #0E7C7B;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
-                    font-weight: bold;
-                  "
-                >
-                  Reset Password
-                </a>
-              </div>
-
-              <p style="margin-top: 25px;">
-                This link will expire in
-                <strong>15 minutes</strong>.
-              </p>
-
-              <p>
-                If you did not request this,
-                you can safely ignore this email.
-              </p>
-
+            <div style="margin: 25px 0;">
+              <a
+                href="${resetUrl}"
+                style="
+                  display: inline-block;
+                  padding: 12px 20px;
+                  background: #0E7C7B;
+                  color: white;
+                  text-decoration: none;
+                  border-radius: 8px;
+                  font-weight: bold;
+                "
+              >
+                Reset Password
+              </a>
             </div>
-          `,
-        });
+
+            <p style="margin-top: 25px;">
+              This link will expire in
+              <strong>15 minutes</strong>.
+            </p>
+
+            <p>
+              If you did not request this,
+              you can safely ignore this email.
+            </p>
+
+          </div>
+        `,
+      });
 
       console.log(
-        "Password reset email sent successfully:",
-        info?.messageId
+        "Password reset email sent successfully. Status:",
+        response?.statusCode
       );
 
     } catch (error) {
@@ -381,7 +375,7 @@ If you did not request this password reset, you can safely ignore this email.`,
 
       console.error(
         "Password reset email error:",
-        error
+        error?.response?.body || error
       );
 
       res.status(500);
