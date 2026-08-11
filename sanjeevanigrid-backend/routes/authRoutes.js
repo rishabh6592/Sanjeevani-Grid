@@ -2,7 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const { OAuth2Client } = require("google-auth-library");
 
 const User = require("../models/User");
@@ -11,29 +11,25 @@ const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
+/* =========================================================
+   GOOGLE CONFIGURATION
+========================================================= */
+
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID
 );
 
 /* =========================================================
-   EMAIL CONFIGURATION
-   ========================================================= */
+   RESEND EMAIL CONFIGURATION
+========================================================= */
 
-const transporter =
-  process.env.EMAIL_USER && process.env.EMAIL_PASS
-    ? nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      })
-    : null;
-
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 /* =========================================================
    POST /api/auth/register
-   ========================================================= */
+========================================================= */
 
 router.post(
   "/register",
@@ -94,10 +90,9 @@ router.post(
   })
 );
 
-
 /* =========================================================
    POST /api/auth/login
-   ========================================================= */
+========================================================= */
 
 router.post(
   "/login",
@@ -113,7 +108,6 @@ router.post(
 
     if (!user || !user.password) {
       res.status(401);
-
       throw new Error(
         "Invalid email or password"
       );
@@ -126,7 +120,6 @@ router.post(
 
     if (!match) {
       res.status(401);
-
       throw new Error(
         "Invalid email or password"
       );
@@ -142,32 +135,27 @@ router.post(
   })
 );
 
-
 /* =========================================================
    POST /api/auth/forgot-password
 
    Body:
    {
-      "email": "user@gmail.com"
+     "email": "user@gmail.com"
    }
 
    Sends password reset email
-   ========================================================= */
+========================================================= */
 
 router.post(
   "/forgot-password",
   asyncHandler(async (req, res) => {
-
     const email = req.body.email
       ?.trim()
       .toLowerCase();
 
     if (!email) {
       res.status(400);
-
-      throw new Error(
-        "Email is required"
-      );
+      throw new Error("Email is required");
     }
 
     const genericMessage =
@@ -191,16 +179,15 @@ router.post(
     }
 
     /*
-      Check email configuration
+      Check Resend configuration
     */
 
-    if (!transporter) {
+    if (!resend || !process.env.RESEND_API_KEY) {
       console.error(
-        "EMAIL_USER or EMAIL_PASS is missing in .env"
+        "RESEND_API_KEY is missing"
       );
 
       res.status(500);
-
       throw new Error(
         "Email service is not configured"
       );
@@ -253,20 +240,32 @@ router.post(
     const resetUrl =
       `${clientUrl}/reset-password?token=${resetToken}`;
 
+    /*
+      Resend sender
+    */
+
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL ||
+      "onboarding@resend.dev";
+
     try {
+      /*
+        Send email through Resend API.
+        No SMTP connection is used.
+      */
 
-      await transporter.sendMail({
+      const { data, error } =
+        await resend.emails.send({
+          from:
+            `SanjeevaniGrid <${fromEmail}>`,
 
-        from:
-          `"SanjeevaniGrid" <${process.env.EMAIL_USER}>`,
+          to: [user.email],
 
-        to: user.email,
+          subject:
+            "SanjeevaniGrid - Reset Password",
 
-        subject:
-          "SanjeevaniGrid - Reset Password",
-
-        text:
-          `You requested a password reset.
+          text:
+            `You requested a password reset.
 
 Click the link below to reset your password:
 
@@ -276,65 +275,100 @@ This link will expire in 15 minutes.
 
 If you did not request this password reset, you can safely ignore this email.`,
 
-        html: `
-          <div style="
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: auto;
-            padding: 30px;
-            color: #0F2438;
-          ">
+          html: `
+            <div style="
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: auto;
+              padding: 30px;
+              color: #0F2438;
+              background: #ffffff;
+            ">
 
-            <h2>
-              SanjeevaniGrid
-            </h2>
+              <h2 style="
+                color: #0E7C7B;
+                margin-bottom: 10px;
+              ">
+                SanjeevaniGrid
+              </h2>
 
-            <h3>
-              Password Reset Request
-            </h3>
+              <h3>
+                Password Reset Request
+              </h3>
 
-            <p>
-              You requested to reset your password.
-            </p>
+              <p>
+                You requested to reset your password.
+              </p>
 
-            <p>
-              Click the button below to create
-              a new password.
-            </p>
+              <p>
+                Click the button below to create
+                a new password.
+              </p>
 
-            <a
-              href="${resetUrl}"
-              style="
-                display: inline-block;
-                padding: 12px 20px;
-                background: #0E7C7B;
-                color: white;
-                text-decoration: none;
-                border-radius: 8px;
-                font-weight: bold;
-              "
-            >
-              Reset Password
-            </a>
+              <div style="margin: 25px 0;">
+                <a
+                  href="${resetUrl}"
+                  style="
+                    display: inline-block;
+                    padding: 12px 20px;
+                    background: #0E7C7B;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-weight: bold;
+                  "
+                >
+                  Reset Password
+                </a>
+              </div>
 
-            <p style="margin-top: 25px;">
-              This link will expire in
-              <strong>15 minutes</strong>.
-            </p>
+              <p style="margin-top: 25px;">
+                This link will expire in
+                <strong>15 minutes</strong>.
+              </p>
 
-            <p>
-              If you did not request this,
-              you can safely ignore this email.
-            </p>
+              <p>
+                If you did not request this,
+                you can safely ignore this email.
+              </p>
 
-          </div>
-        `,
-      });
-
-    } catch (error) {
+            </div>
+          `,
+        });
 
       /*
-        If email fails, remove reset token
+        Resend returned an error
+      */
+
+      if (error) {
+        console.error(
+          "Resend email error:",
+          error
+        );
+
+        user.resetPasswordToken =
+          undefined;
+
+        user.resetPasswordExpire =
+          undefined;
+
+        await user.save();
+
+        res.status(500);
+
+        throw new Error(
+          "Could not send password reset email"
+        );
+      }
+
+      console.log(
+        "Password reset email sent successfully:",
+        data?.id
+      );
+
+    } catch (error) {
+      /*
+        Remove reset token if email fails
       */
 
       user.resetPasswordToken =
@@ -363,20 +397,18 @@ If you did not request this password reset, you can safely ignore this email.`,
   })
 );
 
-
 /* =========================================================
    POST /api/auth/reset-password/:token
 
    Body:
    {
-      "password": "newpassword"
+     "password": "newpassword"
    }
-   ========================================================= */
+========================================================= */
 
 router.post(
   "/reset-password/:token",
   asyncHandler(async (req, res) => {
-
     const {
       token,
     } = req.params;
@@ -387,7 +419,6 @@ router.post(
 
     if (!token || !password) {
       res.status(400);
-
       throw new Error(
         "Reset token and new password are required"
       );
@@ -395,7 +426,6 @@ router.post(
 
     if (password.length < 6) {
       res.status(400);
-
       throw new Error(
         "Password must be at least 6 characters"
       );
@@ -428,7 +458,6 @@ router.post(
 
     if (!user) {
       res.status(400);
-
       throw new Error(
         "Reset link is invalid or expired"
       );
@@ -470,22 +499,19 @@ router.post(
   })
 );
 
-
 /* =========================================================
    POST /api/auth/google
-   ========================================================= */
+========================================================= */
 
 router.post(
   "/google",
   asyncHandler(async (req, res) => {
-
     const {
       credential,
     } = req.body;
 
     if (!credential) {
       res.status(400);
-
       throw new Error(
         "Missing Google credential token"
       );
@@ -508,7 +534,6 @@ router.post(
       });
 
     if (!user) {
-
       /*
         Link Google account with
         existing email account
@@ -521,7 +546,6 @@ router.post(
         });
 
       if (user) {
-
         user.googleId =
           payload.sub;
 
@@ -531,7 +555,6 @@ router.post(
         await user.save();
 
       } else {
-
         user =
           await User.create({
             name:
@@ -560,20 +583,16 @@ router.post(
   })
 );
 
-
 /* =========================================================
    GET /api/auth/me
-   ========================================================= */
+========================================================= */
 
 router.get(
   "/me",
   protect,
   asyncHandler(async (req, res) => {
-
     res.json(req.user);
-
   })
 );
-
 
 module.exports = router;
