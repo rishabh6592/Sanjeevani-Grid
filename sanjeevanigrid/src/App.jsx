@@ -657,7 +657,7 @@ function LoginScreen({ onLogin }) {
                   </Field>
                 )}
                 {mode === "register" && role === "admin" && (
-                  <Field label="Admin Invite Code" icon={KeyRound}>
+                  <Field label="Secret Code for Admin" icon={KeyRound}>
                     <Input type="password" placeholder="Enter the admin invite code" value={adminCode}
                       onChange={(e) => setAdminCode(e.target.value)} />
                   </Field>
