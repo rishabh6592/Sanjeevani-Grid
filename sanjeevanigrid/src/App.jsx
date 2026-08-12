@@ -161,6 +161,15 @@ function maskAadhar(a) {
   return `XXXX XXXX ${a.slice(-4)}`;
 }
 
+// Vibrates the device (Android Chrome/Edge only — iOS Safari has no
+// Vibration API support) when a new admin-facing alert shows up while the
+// tab is open. Silently does nothing on unsupported browsers/desktops.
+function vibrateAlert(pattern = [200, 100, 200]) {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+}
+
 // Auto-capitalizes the first letter of every word as the person types —
 // used on name / place / reason fields so "ravi kumar" becomes "Ravi Kumar".
 function capitalizeWords(str) {
@@ -2398,6 +2407,20 @@ export default function App() {
   const [activeCall, setActiveCall] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Pending-alert count, used for the sidebar badge AND to trigger a short
+  // device vibration (Android Chrome/Edge only — iOS Safari has no
+  // Vibration API) whenever a NEW request comes in while an admin has the
+  // tab open. prevPendingRef remembers the last count so we only vibrate on
+  // increases, not on every 8s poll or when counts go down.
+  const pendingCount = patients.filter((p) => p.requestStatus === "Pending").length + teleconsults.filter((t) => t.status === "Waiting").length;
+  const prevPendingRef = useRef(0);
+  useEffect(() => {
+    if (currentUser?.role === "admin" && pendingCount > prevPendingRef.current) {
+      vibrateAlert();
+    }
+    prevPendingRef.current = pendingCount;
+  }, [pendingCount, currentUser]);
+
   function showToast(msg) {
     setToast(msg);
     clearTimeout(showToast._t);
@@ -2610,7 +2633,6 @@ export default function App() {
   const isAdmin = currentUser.role === "admin";
   const tab = isAdmin ? adminTab : userTab;
   const setTab = isAdmin ? setAdminTab : setUserTab;
-  const pendingCount = patients.filter((p) => p.requestStatus === "Pending").length + teleconsults.filter((t) => t.status === "Waiting").length;
 
   const titleMap = isAdmin
     ? { overview: "Overview", grid: "Hospital Grid", patients: "Patients Registry", teleconsult: "Teleconsultation Log", alerts: "Alerts" }
@@ -2621,11 +2643,11 @@ export default function App() {
 
   return (
     <>
-      <div className="flex min-h-screen w-full" style={{ background: C.bg, fontFamily: "Inter, sans-serif" }}>
+      <div className="flex h-75 w-full overflow-hidden" style={{ background: C.bg, fontFamily: "Inter, sans-serif" }}>
         <style>{`@keyframes fadein{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}`}</style>
         <Sidebar role={currentUser.role} tab={tab} setTab={setTab} onLogout={handleLogout} name={currentUser.name} open={sidebarOpen} setOpen={setSidebarOpen} alertCount={isAdmin ? pendingCount : 0} />
 
-        <div className="flex-1 min-w-0 w-full" style={{ paddingBottom: 84 }}>
+        <div className="flex-1 min-w-0 w-full h-screen overflow-y-auto" style={{ paddingBottom: 84 }}>
           <Topbar
             title={titleMap[tab]}
             subtitle={subMap[tab]}
