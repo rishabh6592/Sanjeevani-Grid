@@ -1,3 +1,5 @@
+import InstallApp from "./InstallApp";
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -2626,6 +2628,7 @@ export default function App() {
       <>
         <LoginScreen onLogin={setCurrentUser} />
         <LiveClockWidget />
+        <InstallApp />
       </>
     );
   }

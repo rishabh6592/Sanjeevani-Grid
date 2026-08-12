@@ -11,3 +11,87 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* install app */
+
+
+.install-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 99999;
+}
+
+.install-popup {
+  width: min(90%, 380px);
+  background: white;
+
+  padding: 30px 25px;
+  border-radius: 20px;
+
+  text-align: center;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+
+  animation: popupIn 0.3s ease;
+}
+
+.install-icon {
+  width: 80px;
+  height: 80px;
+
+  border-radius: 18px;
+  object-fit: cover;
+
+  margin-bottom: 15px;
+}
+
+.install-popup h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.install-popup p {
+  color: #666;
+  margin-bottom: 25px;
+}
+
+.install-popup button {
+  width: 100%;
+  padding: 13px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #2563eb;
+  color: white;
+
+  font-size: 16px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.install-popup .not-now {
+  margin-top: 10px;
+
+  background: transparent;
+  color: #555;
+}
+
+@keyframes popupIn {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
