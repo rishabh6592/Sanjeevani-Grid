@@ -2711,6 +2711,7 @@ export default function App() {
 
       <Toast toast={toast} />
       <LiveClockWidget />
+      {/* <InstallApp /> */}
     </>
   );
 }
