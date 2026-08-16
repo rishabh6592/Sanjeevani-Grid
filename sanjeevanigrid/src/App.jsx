@@ -284,11 +284,12 @@ function Modal({ onClose, children, width = "max-w-2xl" }) {
   );
 }
 
-function Field({ label, icon: Icon, children }) {
+function Field({ label, icon: Icon, children, required }) {
   return (
     <label className="block mb-3.5">
       <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: C.textSoft }}>
         {label}
+        {required && <span style={{ color: C.critical }}> *</span>}
       </span>
       <div className="mt-1.5 flex items-center gap-2 border rounded-xl px-3 py-2.5 focus-within:ring-2" style={{ borderColor: C.line }}>
         {Icon && <Icon size={16} style={{ color: C.teal }} />}
@@ -445,9 +446,28 @@ function LoginScreen({ onLogin }) {
       return; // Exit after handling mobile-based forgot password
     }
 
-    if (mode === "register" && !name.trim()) return setError("Enter your full name.");
-    if (!email.trim() || !password.trim()) return setError("Enter your email and password.");
-    if (mode === "register" && password.length < 6) return setError("Password should be at least 6 characters.");
+    /* ===================== MANDATORY FIELD VALIDATION ===================== *
+     * Applies to BOTH Admin and Patient/Public "Create Account" forms.       *
+     * Nothing reaches the API call (and therefore MongoDB) until every       *
+     * required field for that role is filled in correctly.                  *
+     * ======================================================================= */
+    if (mode === "register") {
+      if (!name.trim()) return setError("Full Name is mandatory.");
+      if (!email.trim()) return setError("Email is mandatory.");
+      if (!password.trim()) return setError("Password is mandatory.");
+      if (password.length < 6) return setError("Password should be at least 6 characters.");
+
+      if (role === "user" && contact.trim().length !== 10) {
+        return setError("Mobile Number is mandatory and must be a valid 10-digit number.");
+      }
+
+      if (role === "admin" && !adminCode.trim()) {
+        return setError("Secret Code is mandatory to create an Admin account. Please enter it below.");
+      }
+    } else {
+      // login mode
+      if (!email.trim() || !password.trim()) return setError("Enter your email and password.");
+    }
 
     setBusy(true);
     try {
@@ -572,6 +592,12 @@ function LoginScreen({ onLogin }) {
                 : (role === "admin" ? "For health department & hospital staff." : "Find beds, register as a patient, or book a video call.")}
             </p>
 
+            {mode === "register" && (
+              <p className="text-[11px] mb-4 -mt-2 font-medium" style={{ color: C.teal }}>
+                Fields marked <span style={{ color: C.critical }}>*</span> are mandatory.
+              </p>
+            )}
+
             {mode === "forgotPassword" && (
               <div className="flex rounded-xl p-1 mb-4" style={{ background: C.bg }}>
                 {["email", "mobile"].map((m) => (
@@ -596,7 +622,7 @@ function LoginScreen({ onLogin }) {
                     A password reset link has been sent to your email address. Please check your inbox.
                   </div>
                 ) : (
-                  <Field label="Email" icon={Mail}>
+                  <Field label="Email" icon={Mail} required>
                     <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </Field>
                 )
@@ -607,7 +633,7 @@ function LoginScreen({ onLogin }) {
                     Your password has been reset successfully. Please login with your new password.
                   </div>
                 ) : !mobileOtpSent ? (
-                  <Field label="Mobile Number" icon={Phone}>
+                  <Field label="Mobile Number" icon={Phone} required>
                     <Input
                       placeholder="10-digit mobile number"
                       value={resetContact}
@@ -620,7 +646,7 @@ function LoginScreen({ onLogin }) {
                     <p className="text-xs mb-3 font-medium" style={{ color: C.teal }}>
                       OTP sent to {resetContact}.
                     </p>
-                    <Field label="Enter OTP" icon={KeyRound}>
+                    <Field label="Enter OTP" icon={KeyRound} required>
                       <Input
                         placeholder="6-digit OTP"
                         value={otp}
@@ -628,14 +654,14 @@ function LoginScreen({ onLogin }) {
                         onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                       />
                     </Field>
-                    <Field label="New Password" icon={Lock}>
+                    <Field label="New Password" icon={Lock} required>
                       <input
                         type="password" placeholder="••••••••" value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="w-full outline-none text-sm bg-transparent" style={{ color: C.text }}
                       />
                     </Field>
-                    <Field label="Confirm New Password" icon={Lock}>
+                    <Field label="Confirm New Password" icon={Lock} required>
                       <input
                         type="password" placeholder="••••••••" value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
@@ -648,27 +674,27 @@ function LoginScreen({ onLogin }) {
             ) : (
               <>
                 {mode === "register" && (
-                  <Field label="Full Name" icon={User}>
+                  <Field label="Full Name" icon={User} required>
                     <Input placeholder="e.g. Ravi Kumar" value={name} onChange={(e) => setName(capitalizeWords(e.target.value))} />
                   </Field>
                 )}
-                <Field label="Email" icon={Mail}>
+                <Field label="Email" icon={Mail} required>
                   <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </Field>
-                <Field label="Password" icon={Lock}>
+                <Field label="Password" icon={Lock} required>
                   <input
                     type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
                     className="w-full outline-none text-sm bg-transparent" style={{ color: C.text }}
                   />
                 </Field>
                 {mode === "register" && role === "user" && (
-                  <Field label="Mobile Number" icon={Phone}>
+                  <Field label="Mobile Number" icon={Phone} required>
                     <Input placeholder="10-digit mobile number" value={contact} maxLength={10}
                       onChange={(e) => setContact(e.target.value.replace(/\D/g, ""))} />
                   </Field>
                 )}
                 {mode === "register" && role === "admin" && (
-                  <Field label="Secret Code for Admin" icon={KeyRound}>
+                  <Field label="Secret Code for Admin" icon={KeyRound} required>
                     <Input type="password" placeholder="Enter the admin invite code" value={adminCode}
                       onChange={(e) => setAdminCode(e.target.value)} />
                   </Field>
