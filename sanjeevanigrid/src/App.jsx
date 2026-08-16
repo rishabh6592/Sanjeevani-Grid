@@ -2423,6 +2423,55 @@ export default function App() {
     prevPendingRef.current = pendingCount;
   }, [pendingCount, currentUser]);
 
+  /* ---- Mobile back-button fix ----
+     Without this, opening a tab/section or a modal doesn't add anything to
+     the browser history, so the very first back-press closes the whole app
+     (there's nothing "before" for the browser to go to except leaving the
+     page). We push exactly ONE extra history entry the moment the user
+     moves away from "home" (default tab, no modal open) and consume that
+     same entry again once they're back home — so there's never more than
+     one entry to eat, and a real back-press always lands on the main page
+     first instead of exiting. */
+  const sgAwayPushedRef = useRef(false);
+  const sgPopNavRef = useRef(false);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (sgPopNavRef.current) return; // this update came from the popstate handler itself — don't re-sync
+
+    const defaultTab = currentUser.role === "admin" ? "overview" : "find";
+    const activeTab = currentUser.role === "admin" ? adminTab : userTab;
+    const modalOpen = !!(selectedHospital || admitTarget || showAddHospital || selectedPatient || activeCall);
+    const isAway = activeTab !== defaultTab || modalOpen;
+
+    if (isAway && !sgAwayPushedRef.current) {
+      window.history.pushState({ sgAway: true }, "");
+      sgAwayPushedRef.current = true;
+    } else if (!isAway && sgAwayPushedRef.current) {
+      sgAwayPushedRef.current = false;
+      window.history.back();
+    }
+  }, [currentUser, adminTab, userTab, selectedHospital, admitTarget, showAddHospital, selectedPatient, activeCall]);
+
+  useEffect(() => {
+    function handlePopState() {
+      if (!currentUser) return;
+      sgPopNavRef.current = true;
+      sgAwayPushedRef.current = false;
+      setSelectedHospital(null);
+      setAdmitTarget(null);
+      setShowAddHospital(false);
+      setSelectedPatient(null);
+      setActiveCall(null);
+      if (currentUser.role === "admin") setAdminTab("overview");
+      else setUserTab("find");
+      setTimeout(() => { sgPopNavRef.current = false; }, 0);
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [currentUser]);
+  /* ---- end mobile back-button fix ---- */
+
   function showToast(msg) {
     setToast(msg);
     clearTimeout(showToast._t);
@@ -2711,7 +2760,7 @@ export default function App() {
 
       <Toast toast={toast} />
       <LiveClockWidget />
-      {/* <InstallApp /> */}
+      <InstallApp />
     </>
   );
 }
