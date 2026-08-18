@@ -2691,11 +2691,78 @@ export default function App() {
   }
 
   if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
-        <p className="text-sm" style={{ color: C.textSoft }}>Loading…</p>
+    if (!authChecked) {
+  return (
+    <div
+      className="min-h-screen w-full flex items-center justify-center relative overflow-hidden"
+      style={{ background: `linear-gradient(160deg, ${C.ink}, ${C.tealDark})` }}
+    >
+      <style>{`
+        @keyframes sgPulseRing {
+          0% { transform: scale(0.75); opacity: 0.55; }
+          100% { transform: scale(2.1); opacity: 0; }
+        }
+        @keyframes sgFadeUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes sgDotBounce {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.35; }
+          40% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+
+      {/* subtle dotted bg, same as login screen */}
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage: "radial-gradient(circle at 2px 2px, #fff 1px, transparent 0)",
+          backgroundSize: "26px 26px",
+        }}
+      />
+
+      <div className="relative flex flex-col items-center">
+        <div className="relative w-20 h-20 flex items-center justify-center mb-5">
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{ border: `2px solid ${C.teal}`, animation: "sgPulseRing 1.8s cubic-bezier(0.4,0,0.6,1) infinite" }}
+          />
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{ border: `2px solid ${C.teal}`, animation: "sgPulseRing 1.8s cubic-bezier(0.4,0,0.6,1) infinite 0.6s" }}
+          />
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.1)" }}
+          >
+            <LogoMark size={26} />
+          </div>
+        </div>
+
+        <div
+          className="text-white font-bold text-base tracking-wide"
+          style={{ fontFamily: "Poppins, sans-serif", animation: "sgFadeUp .4s ease" }}
+        >
+          SanjeevaniGrid
+        </div>
+
+        <div className="flex items-center gap-1.5 mt-3">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: C.teal, animation: `sgDotBounce 1.2s ease-in-out infinite ${i * 0.15}s` }}
+            />
+          ))}
+        </div>
+
+        <p className="text-[11px] mt-3" style={{ color: "#7FA7A5" }}>
+          Connecting to Bihar Health Network…
+        </p>
       </div>
-    );
+    </div>
+  );
+}
   }
 
   if (!currentUser) {
